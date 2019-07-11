@@ -1,6 +1,6 @@
 # PHP Shopify SDK
 
-[![Build Status](https://travis-ci.org/phpclassic/php-shopify.svg?branch=master)](https://travis-ci.org/phpclassic/php-shopify) [![Total Downloads](https://poser.pugx.org/phpclassic/php-shopify/downloads)](https://packagist.org/packages/phpclassic/php-shopify) [![Latest Stable Version](https://poser.pugx.org/phpclassic/php-shopify/v/stable)](https://packagist.org/packages/phpclassic/php-shopify) [![Latest Unstable Version](https://poser.pugx.org/phpclassic/php-shopify/v/unstable)](https://packagist.org/packages/phpclassic/php-shopify) [![License](https://poser.pugx.org/phpclassic/php-shopify/license)](https://packagist.org/packages/phpclassic/php-shopify)
+[![Build Status](https://travis-ci.org/phpclassic/php-shopify.svg?branch=master)](https://travis-ci.org/phpclassic/php-shopify) [![Total Downloads](https://poser.pugx.org/phpclassic/php-shopify/downloads)](https://packagist.org/packages/phpclassic/php-shopify) [![Latest Stable Version](https://poser.pugx.org/phpclassic/php-shopify/v/stable)](https://packagist.org/packages/phpclassic/php-shopify) [![Latest Unstable Version](https://poser.pugx.org/phpclassic/php-shopify/v/unstable)](https://packagist.org/packages/phpclassic/php-shopify) [![License](https://poser.pugx.org/phpclassic/php-shopify/license)](https://packagist.org/packages/phpclassic/php-shopify) [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ME9N6M2B87XT4&currency_code=USD&source=url)
 
 PHPShopify is a simple SDK implementation of Shopify API. It helps accessing the API in an object oriented way. 
 
@@ -68,6 +68,12 @@ $scopes = 'read_products,write_products,read_script_tags,write_script_tags';
 $redirectUrl = 'https://yourappurl.com/your_redirect_url.php';
 
 \PHPShopify\AuthHelper::createAuthRequest($scopes, $redirectUrl);
+```
+
+> If you want the function to return the authentication url instead of auto-redirecting, you can set the argument `$return` (5th argument) to `true`.
+
+```php
+\PHPShopify\AuthHelper::createAuthRequest($scopes, $redirectUrl, null, null, true);
 ```
 
 3) Get the access token when redirected back to the `$redirectUrl` after app authorization. 
@@ -147,6 +153,9 @@ $order = array (
 $shopify->Order->post($order);
 ```
 
+> Note that you don't need to wrap the data array with the resource key (`order` in this case), which is the expected syntax from Shopify API. This is automatically handled by this SDK.
+
+
 - Update an order (PUT Request)
 
 ```php
@@ -154,7 +163,7 @@ $updateInfo = array (
     "fulfillment_status" => "fulfilled",
 );
 
-$shopify->Order($orderID)->put($order);
+$shopify->Order($orderID)->put($updateInfo);
 ```
 
 - Remove a Webhook (DELETE request)
@@ -225,6 +234,32 @@ $shopify->Blog($blogID)->Article($articleID)->put($updateArtilceInfo);
 $blogArticle = $shopify->Blog($blogID)->Article($articleID)->delete();
 ```
 
+### GraphQL <sup>*v1.1*</sup>
+The GraphQL Admin API is a GraphQL-based alternative to the REST-based Admin API, and makes the functionality of the Shopify admin available at a single GraphQL endpoint. The full set of supported types can be found in the [GraphQL Admin API reference](https://help.shopify.com/en/api/graphql-admin-api/reference).
+You can simply call the GraphQL resource and make a post request with a GraphQL string:
+
+> The GraphQL Admin API requires an access token for making authenticated requests. So it won't work with `ApiKey` and `Password` which is allowed for REST API resources.
+
+```php
+$graphQL = <<<Query
+query {
+  shop {
+    name
+    primaryDomain {
+      url
+      host
+    }
+  }
+}
+Query;
+
+$data = $shopify->GraphQL->post($graphQL);
+```
+
+##### GraphQL Builder
+This SDK only accepts a GraphQL string as input. You can build your GraphQL from [Shopify GraphQL Builder](https://help.shopify.com/en/api/graphql-admin-api/graphiql-builder)
+
+
 ### Resource Mapping
 Some resources are available directly, some resources are only available through parent resources and a few resources can be accessed both ways. It is recommended that you see the details in the related Shopify API Reference page about each resource. Each resource name here is linked to related Shopify API Reference page.
 > Use the resources only by listed resource map. Trying to get a resource directly which is only available through parent resource may end up with errors.
@@ -234,6 +269,7 @@ Some resources are available directly, some resources are only available through
 - [Blog](https://help.shopify.com/api/reference/blog/)
 - Blog -> [Article](https://help.shopify.com/api/reference/article/)
 - Blog -> Article -> [Event](https://help.shopify.com/api/reference/event/)
+- Blog -> Article -> [Metafield](https://help.shopify.com/api/reference/metafield)
 - Blog -> [Event](https://help.shopify.com/api/reference/event/)
 - Blog -> [Metafield](https://help.shopify.com/api/reference/metafield)
 - [CarrierService](https://help.shopify.com/api/reference/carrierservice/)
@@ -242,19 +278,24 @@ Some resources are available directly, some resources are only available through
 - Comment -> [Event](https://help.shopify.com/api/reference/event/)
 - [Country](https://help.shopify.com/api/reference/country/)
 - Country -> [Province](https://help.shopify.com/api/reference/province/)
+- [Currency](https://help.shopify.com/en/api/reference/store-properties/currency)
 - [CustomCollection]()
 - CustomCollection -> [Event](https://help.shopify.com/api/reference/event/)
 - CustomCollection -> [Metafield](https://help.shopify.com/api/reference/metafield)
 - [Customer](https://help.shopify.com/api/reference/customer/)
 - Customer -> [Address](https://help.shopify.com/api/reference/customeraddress/)
 - Customer -> [Metafield](https://help.shopify.com/api/reference/metafield)
+- Customer -> [Order](https://help.shopify.com/api/reference/order)
 - [CustomerSavedSearch](https://help.shopify.com/api/reference/customersavedsearch/)
 - CustomerSavedSearch -> [Customer](https://help.shopify.com/api/reference/customer/)
 - [Discount](https://help.shopify.com/api/reference/discount) _(Shopify Plus Only)_
 - [Event](https://help.shopify.com/api/reference/event/)
 - [FulfillmentService](https://help.shopify.com/api/reference/fulfillmentservice)
 - [GiftCard](https://help.shopify.com/api/reference/gift_card) _(Shopify Plus Only)_
+- [InventoryItem](https://help.shopify.com/api/reference/inventoryitem)
+- [InventoryLevel](https://help.shopify.com/api/reference/inventorylevel)
 - [Location](https://help.shopify.com/api/reference/location/) _(read only)_
+- Location -> [InventoryLevel](https://help.shopify.com/api/reference/inventorylevel)
 - [Metafield](https://help.shopify.com/api/reference/metafield)
 - [Multipass](https://help.shopify.com/api/reference/multipass) _(Shopify Plus Only, API not available yet)_
 - [Order](https://help.shopify.com/api/reference/order)
@@ -275,6 +316,7 @@ Some resources are available directly, some resources are only available through
 - Product -> Variant -> [Metafield](https://help.shopify.com/api/reference/metafield)
 - Product -> [Event](https://help.shopify.com/api/reference/event/)
 - Product -> [Metafield](https://help.shopify.com/api/reference/metafield)
+- [ProductListing](https://help.shopify.com/api/reference/sales_channels/productlisting)
 - [ProductVariant](https://help.shopify.com/api/reference/product_variant)
 - ProductVariant -> [Metafield](https://help.shopify.com/api/reference/metafield)
 - [RecurringApplicationCharge](https://help.shopify.com/api/reference/recurringapplicationcharge)
@@ -289,6 +331,7 @@ Some resources are available directly, some resources are only available through
 - Theme -> [Asset](https://help.shopify.com/api/reference/asset/)
 - [User](https://help.shopify.com/api/reference/user) _(read only, Shopify Plus Only)_
 - [Webhook](https://help.shopify.com/api/reference/webhook)
+- [GraphQL](https://help.shopify.com/en/api/graphql-admin-api/reference)
 
 ### Custom Actions
 There are several action methods which can be called without calling the `get()`, `post()`, `put()`, `delete()` methods directly, but eventually results in a custom call to one of those methods.
@@ -331,6 +374,8 @@ The custom methods are specific to some resources which may not be available for
 - Customer ->
     - [search()](https://help.shopify.com/api/reference/customer#search)
     Search for customers matching supplied query
+    - [send_invite($data)](https://help.shopify.com/en/api/reference/customers/customer#send_invite)
+    Sends an account invite to a customer.
     
 - Customer -> Address ->
     - [makeDefault()](https://help.shopify.com/api/reference/customeraddress#default)
@@ -358,6 +403,14 @@ The custom methods are specific to some resources which may not be available for
     - [search()](https://help.shopify.com/api/reference/gift_card#search)
     Search for gift cards matching supplied query
     
+- InventoryLevel ->
+    - [adjust($data)](https://help.shopify.com/api/reference/inventorylevel#adjust)
+    Adjust inventory level.
+    - [connect($data)](https://help.shopify.com/api/reference/inventorylevel#connect)
+    Connect an inventory item to a location.
+    - [set($data)](https://help.shopify.com/api/reference/inventorylevel#set)
+    Set an inventory level for a single inventory item within a location.
+    
 - Order ->
     - [close()](https://help.shopify.com/api/reference/order#close)
     Close an Order
@@ -369,6 +422,10 @@ The custom methods are specific to some resources which may not be available for
 - Order -> Refund ->
     - [calculate()](https://help.shopify.com/api/reference/refund#calculate)
     Calculate a Refund.
+    
+- ProductListing ->
+    - [productIds()](https://help.shopify.com/api/reference/sales_channels/productlisting#product_ids)
+    Retrieve product_ids that are published to your app.
     
 - RecurringApplicationCharge -> 
     - [activate()](https://help.shopify.com/api/reference/recurringapplicationcharge#activate)
@@ -386,3 +443,8 @@ The custom methods are specific to some resources which may not be available for
 
 ## Reference
 - [Shopify API Reference](https://help.shopify.com/api/reference/)
+
+## Donation
+If this project help you reduce time to develop, you can donate any amount, which will help us to devote more hours to this project and ensure more frequent updates.
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ME9N6M2B87XT4&currency_code=USD&source=url)

@@ -33,6 +33,23 @@ class AuthHelper
     }
 
     /**
+     * Build a query string from a data array
+     * This is a replacement for http_build_query because that returns an url-encoded string.
+     *
+     * @param array $data Data array
+     *
+     * @return array
+     */
+    public static function buildQueryString($data)
+    {
+        $paramStrings = [];
+        foreach ($data as $key => $value) {
+            $paramStrings[] = "$key=$value";
+        }
+        return join('&', $paramStrings);
+    }
+
+    /**
      * Verify if the request is made from shopify using hmac hash value
      *
      * @throws SdkException if SharedSecret is not provided or hmac is not found in the url parameters
@@ -61,7 +78,7 @@ class AuthHelper
             unset($data['signature']);
         }
         //Create data string for the remaining url parameters
-        $dataString = http_build_query($data);
+        $dataString = self::buildQueryString($data);
 
         $realHmac = hash_hmac('sha256', $dataString, $sharedSecret);
 
@@ -80,12 +97,14 @@ class AuthHelper
      *
      * @param string|string[] $scopes Scopes required by app
      * @param string $redirectUrl
-     *
+     * @param string $state
+     * @param string[] $options
+     * @param bool $return If true, will return the authentical url instead of auto-redirecting to the page.
      * @throws SdkException if required configuration is not provided in $config
      *
-     * @return void
+     * @return void|string
      */
-    public static function createAuthRequest($scopes, $redirectUrl = null)
+    public static function createAuthRequest($scopes, $redirectUrl = null, $state = null, $options = null, $return = false)
     {
         $config = ShopifySDK::$config;
 
@@ -109,7 +128,19 @@ class AuthHelper
         if (is_array($scopes)) {
             $scopes = join(',', $scopes);
         }
-        $authUrl = $config['AdminUrl'] . 'oauth/authorize?client_id=' . $config['ApiKey'] . '&redirect_uri=' . $redirectUrl . "&scope=$scopes";
+        if(!empty($state)) {
+            $state = '&state=' . $state;
+        }
+        if(!empty($options)) {
+            $options = '&grant_options[]=' . join(',', $options);
+        }
+        // Official call structure
+        // https://{shop}.myshopify.com/admin/oauth/authorize?client_id={api_key}&scope={scopes}&redirect_uri={redirect_uri}&state={nonce}&grant_options[]={option}
+        $authUrl = $config['AdminUrl'] . 'oauth/authorize?client_id=' . $config['ApiKey'] . '&redirect_uri=' . $redirectUrl . "&scope=$scopes" . $state . $options;
+
+        if ($return) {
+            return $authUrl;
+        }
 
         header("Location: $authUrl");
     }

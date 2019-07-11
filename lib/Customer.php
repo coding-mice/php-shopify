@@ -10,15 +10,15 @@
 namespace PHPShopify;
 
 
-/*
+/**
  * --------------------------------------------------------------------------
  * Customer -> Child Resources
  * --------------------------------------------------------------------------
- * @property-read ShopifyResource $Address
- * @property-read ShopifyResource $Metafield
+ * @property-read CustomerAddress $Address
+ * @property-read Metafield $Metafield
  *
- * @method ShopifyResource Address(integer $id = null)
- * @method ShopifyResource Metafield(integer $id = null)
+ * @method CustomerAddress Address(integer $id = null)
+ * @method Metafield Metafield(integer $id = null)
  * --------------------------------------------------------------------------
  * Customer -> Custom actions
  * --------------------------------------------------------------------------
@@ -42,5 +42,22 @@ class Customer extends ShopifyResource
     protected $childResource = array(
         'CustomerAddress' => 'Address',
         'Metafield',
+        'Order'
     );
+
+    /**
+     * Sends an account invite to a customer.
+     *
+     * @param array $customer_invite Customized invite data
+     *
+     * @return array
+     */
+    public function send_invite($customer_invite = array())
+    {
+        if (empty ( $customer_invite ) ) $customer_invite = new \stdClass();
+        $url = $this->generateUrl(array(), 'send_invite');
+        $dataArray = $this->wrapData($customer_invite, 'customer_invite');
+
+        return $this->post($dataArray, $url, false);
+    }
 }

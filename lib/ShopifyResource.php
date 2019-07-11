@@ -24,12 +24,6 @@ use PHPShopify\Exception\CurlException;
 abstract class ShopifyResource
 {
     /**
-     * @see: https://help.shopify.com/api/getting-started/api-call-limit
-     * @var int
-     */
-    private $apiBucketLimit = 40;
-
-    /**
      * HTTP request headers
      *
      * @var array
@@ -54,7 +48,7 @@ abstract class ShopifyResource
 
     /**
      * List of child Resource names / classes
-     * 
+     *
      * If any array item has an associative key => value pair, value will be considered as the resource name
      * (by which it will be called) and key will be the associated class name.
      *
@@ -125,7 +119,7 @@ abstract class ShopifyResource
 
         $config = ShopifySDK::$config;
 
-        $this->resourceUrl = ($parentResourceUrl ? $parentResourceUrl . '/' :  $config['AdminUrl']) . $this->getResourcePath() . ($this->id ? '/' . $this->id : '');
+        $this->resourceUrl = ($parentResourceUrl ? $parentResourceUrl . '/' :  $config['ApiUrl']) . $this->getResourcePath() . ($this->id ? '/' . $this->id : '');
 
         if (isset($config['AccessToken'])) {
             $this->httpHeaders['X-Shopify-Access-Token'] = $config['AccessToken'];
@@ -231,7 +225,11 @@ abstract class ShopifyResource
 
             $url = $this->generateUrl($urlParams, $customAction);
 
-            return $this->$httpMethod($dataArray, $url);
+            if ($httpMethod == 'post' || $httpMethod == 'put') {
+                return $this->$httpMethod($dataArray, $url, false);
+            } else {
+                return $this->$httpMethod($dataArray, $url);
+            }
         }
     }
 
@@ -363,16 +361,17 @@ abstract class ShopifyResource
      *
      * @param array $dataArray Check Shopify API reference of the specific resource for the list of required and optional data elements to be provided
      * @param string $url
+     * @param bool $wrapData
      *
      * @uses HttpRequestJson::post() to send the HTTP request
      *
      * @return array
      */
-    public function post($dataArray, $url = null)
+    public function post($dataArray, $url = null, $wrapData = true)
     {
         if (!$url) $url = $this->generateUrl();
 
-        if (!empty($dataArray)) $dataArray = $this->wrapData($dataArray);
+        if ($wrapData && !empty($dataArray)) $dataArray = $this->wrapData($dataArray);
 
         $response = HttpRequestJson::post($url, $dataArray, $this->httpHeaders);
 
@@ -384,17 +383,18 @@ abstract class ShopifyResource
      *
      * @param array $dataArray Check Shopify API reference of the specific resource for the list of required and optional data elements to be provided
      * @param string $url
+     * @param bool $wrapData
      *
      * @uses HttpRequestJson::put() to send the HTTP request
      *
      * @return array
      */
-    public function put($dataArray, $url = null)
+    public function put($dataArray, $url = null, $wrapData = true)
     {
 
         if (!$url) $url = $this->generateUrl();
 
-        if (!empty($dataArray)) $dataArray = $this->wrapData($dataArray);
+        if ($wrapData && !empty($dataArray)) $dataArray = $this->wrapData($dataArray);
 
         $response = HttpRequestJson::put($url, $dataArray, $this->httpHeaders);
 
@@ -426,8 +426,6 @@ abstract class ShopifyResource
      * @param array $dataArray
      * @param string $dataKey
      *
-     * @internal
-     *
      * @return array
      */
     protected function wrapData($dataArray, $dataKey = null)
@@ -448,7 +446,7 @@ abstract class ShopifyResource
      */
     protected function castString($array)
     {
-        if (is_string($array)) return $array;
+        if ( ! is_array($array)) return (string) $array;
 
         $string = '';
         $i = 0;

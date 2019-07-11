@@ -60,9 +60,87 @@ namespace PHPShopify;
 | //Get variants of a product (using Child resource)
 | $products = $shopify->Product($productID)->Variant->get();
 |
+| //GraphQL
+| $data = $shopify->GraphQL->post($graphQL);
+|
 */
 use PHPShopify\Exception\SdkException;
 
+/**
+ * @property-read AbandonedCheckout $AbandonedCheckout
+ * @property-read Blog $Blog
+ * @property-read CarrierService $CarrierService
+ * @property-read Collect $Collect
+ * @property-read Comment $Comment
+ * @property-read Country $Country
+ * @property-read Currency $Currency
+ * @property-read CustomCollection $CustomCollection
+ * @property-read Customer $Customer
+ * @property-read CustomerSavedSearch $CustomerSavedSearch
+ * @property-read Discount $Discount
+ * @property-read PriceRule $PriceRule
+ * @property-read Event $Event
+ * @property-read FulfillmentService $FulfillmentService
+ * @property-read GiftCard $GiftCard
+ * @property-read InventoryItem $InventoryItem
+ * @property-read InventoryLevel $InventoryLevel
+ * @property-read Location $Location
+ * @property-read Metafield $Metafield
+ * @property-read Multipass $Multipass
+ * @property-read Order $Order
+ * @property-read Page $Page
+ * @property-read Policy $Policy
+ * @property-read Product $Product
+ * @property-read ProductListing $ProductListing
+ * @property-read ProductVariant $ProductVariant
+ * @property-read RecurringApplicationCharge $RecurringApplicationCharge
+ * @property-read Redirect $Redirect
+ * @property-read ScriptTag $ScriptTag
+ * @property-read ShippingZone $ShippingZone
+ * @property-read Shop $Shop
+ * @property-read SmartCollection $SmartCollection
+ * @property-read Theme $Theme
+ * @property-read User $User
+ * @property-read Webhook $Webhook
+ * @property-read GraphQL $GraphQL
+ *
+ * @method AbandonedCheckout AbandonedCheckout(integer $id = null)
+ * @method Blog Blog(integer $id = null)
+ * @method CarrierService CarrierService(integer $id = null)
+ * @method Collect Collect(integer $id = null)
+ * @method Comment Comment(integer $id = null)
+ * @method Country Country(integer $id = null)
+ * @method Currency Currency(integer $id = null)
+ * @method CustomCollection CustomCollection(integer $id = null)
+ * @method Customer Customer(integer $id = null)
+ * @method CustomerSavedSearch CustomerSavedSearch(integer $id = null)
+ * @method Discount Discount(integer $id = null)
+ * @method PriceRule PriceRule(integer $id = null)
+ * @method Event Event(integer $id = null)
+ * @method FulfillmentService FulfillmentService(integer $id = null)
+ * @method GiftCard GiftCard(integer $id = null)
+ * @method InventoryItem InventoryItem(integer $id = null)
+ * @method InventoryLevel InventoryLevel(integer $id = null)
+ * @method Location Location(integer $id = null)
+ * @method Metafield Metafield(integer $id = null)
+ * @method Multipass Multipass(integer $id = null)
+ * @method Order Order(integer $id = null)
+ * @method Page Page(integer $id = null)
+ * @method Policy Policy(integer $id = null)
+ * @method Product Product(integer $id = null)
+ * @method ProductListing ProductListing(integer $id = null)
+ * @method ProductVariant ProductVariant(integer $id = null)
+ * @method RecurringApplicationCharge RecurringApplicationCharge(integer $id = null)
+ * @method Redirect Redirect(integer $id = null)
+ * @method ScriptTag ScriptTag(integer $id = null)
+ * @method ShippingZone ShippingZone(integer $id = null)
+ * @method Shop Shop(integer $id = null)
+ * @method SmartCollection SmartCollection(integer $id = null)
+ * @method Theme Theme(int $id = null)
+ * @method User User(integer $id = null)
+ * @method Webhook Webhook(integer $id = null)
+ * @method GraphQL GraphQL()
+ */
 class ShopifySDK
 {
     /**
@@ -80,7 +158,9 @@ class ShopifySDK
      *
      * @var array
      */
-    public static $config = array();
+    public static $config = array(
+        'ApiVersion' => '2019-04'
+    );
 
     /**
      * List of available resources which can be called from this client
@@ -95,6 +175,7 @@ class ShopifySDK
         'Collect',
         'Comment',
         'Country',
+        'Currency',
         'CustomCollection',
         'Customer',
         'CustomerSavedSearch',
@@ -102,6 +183,8 @@ class ShopifySDK
         'Event',
         'FulfillmentService',
         'GiftCard',
+        'InventoryItem',
+        'InventoryLevel',
         'Location',
         'Metafield',
         'Multipass',
@@ -109,9 +192,12 @@ class ShopifySDK
         'Page',
         'Policy',
         'Product',
+        'ProductListing',
         'ProductVariant',
+        'PriceRule',
         'RecurringApplicationCharge',
         'Redirect',
+        'Report',
         'ScriptTag',
         'ShippingZone',
         'Shop',
@@ -120,6 +206,7 @@ class ShopifySDK
         'User',
         'Variant',
         'Webhook',
+        'GraphQL'
     );
 
     /**
@@ -136,6 +223,7 @@ class ShopifySDK
         'OrderRisk'         => 'Order',
         'ProductImage'      => 'Product',
         'ProductVariant'    => 'Product',
+        'DiscountCode'      => 'PriceRule',
         'Province'          => 'Country',
         'Refund'            => 'Order',
         'Transaction'       => 'Order',
@@ -152,8 +240,7 @@ class ShopifySDK
     public function __construct($config = array())
     {
         if(!empty($config)) {
-            ShopifySDK::$config = $config;
-            ShopifySDK::setAdminUrl();
+            ShopifySDK::config($config);
         }
     }
 
@@ -242,6 +329,7 @@ class ShopifySDK
 
         //Remove https:// and trailing slash (if provided)
         $shopUrl = preg_replace('#^https?://|/$#', '', $shopUrl);
+        $apiVersion = self::$config['ApiVersion'];
 
         if(isset(self::$config['ApiKey']) && isset(self::$config['Password'])) {
             $apiKey = self::$config['ApiKey'];
@@ -252,6 +340,7 @@ class ShopifySDK
         }
 
         self::$config['AdminUrl'] = $adminUrl;
+        self::$config['ApiUrl'] = $adminUrl . "api/$apiVersion/";
 
         return $adminUrl;
     }
@@ -263,6 +352,15 @@ class ShopifySDK
      */
     public static function getAdminUrl() {
         return self::$config['AdminUrl'];
+    }
+
+    /**
+     * Get the api url of the configured shop
+     *
+     * @return string
+     */
+    public static function getApiUrl() {
+        return self::$config['ApiUrl'];
     }
 
     /**

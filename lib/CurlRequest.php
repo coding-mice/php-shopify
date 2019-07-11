@@ -9,6 +9,7 @@ namespace PHPShopify;
 
 
 use PHPShopify\Exception\CurlException;
+use PHPShopify\Exception\ResourceRateLimitException;
 
 /*
 |--------------------------------------------------------------------------
@@ -80,6 +81,10 @@ class CurlRequest
 
         //Return the transfer as a string
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+        curl_setopt($ch, CURLOPT_HEADER, true);
+
+        curl_setopt($ch, CURLOPT_USERAGENT, 'PHPClassic/PHPShopify');
 
         curl_setopt($ch, CURLINFO_HEADER_OUT, true);
 
@@ -207,19 +212,26 @@ class CurlRequest
             }
         );
 
-        $output = curl_exec($ch);
+        # Check for 429 leaky bucket error
+        while (1) {
+            $output   = curl_exec($ch);
+            $response = new CurlResponse($output);
 
-        self::$lastRequestHeaders = curl_getinfo($ch, CURLINFO_HEADER_OUT);
-        self::$lastHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        self::$lastResponseHeaders = json_encode($headers);
-        self::$lastResponseBody = $output;
-
-        if(isset($headers['x-shopify-shop-api-call-limit'])){
-            list($currentState,$limit) = explode('/',$headers['x-shopify-shop-api-call-limit'][0]);
-            if($currentState >= $limit-3){
-                //var_dump($currentState.' sleeping for 1s');
-                sleep(1);
+            self::$lastHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            if (self::$lastHttpCode != 429) {
+                self::$lastRequestHeaders = curl_getinfo($ch, CURLINFO_HEADER_OUT);
+                self::$lastResponseHeaders = json_encode($headers);
+                self::$lastResponseBody = $output;
+                break;
             }
+
+            $limitHeader = explode('/', $response->getHeader('X-Shopify-Shop-Api-Call-Limit'), 2);
+
+            if (isset($limitHeader[1]) && $limitHeader[0] < $limitHeader[1]) {
+                throw new ResourceRateLimitException($response->getBody());
+            }
+
+            usleep(500000);
         }
 
         if (curl_errno($ch)) {
@@ -237,6 +249,7 @@ class CurlRequest
         // close curl resource to free up system resources
         curl_close($ch);
 
-        return $output;
+        return $response->getBody();
     }
+
 }
